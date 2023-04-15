@@ -1,0 +1,9 @@
+# IDE stuff
+.idea/
+*.iml
+
+# environments
+*venv*/
+.tox/
+*.pid
+.env
