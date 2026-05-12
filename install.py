@@ -1,41 +1,39 @@
 #!/usr/bin/env python
 
-import abc
 import argparse
 import os
 import shutil
+from pathlib import Path
 
 
-class InstallerBase(abc.ABC):
+class InstallerBase:
     TEMPLATE_DIR = "./templates/"
     TEMPLATES = {}
 
     @staticmethod
     def get_full_path(path_name: str) -> str:
-        return str(os.path.abspath(os.path.expanduser(os.path.expandvars(path_name))))
+        return str(Path(os.path.expandvars(path_name)).expanduser().resolve())
 
     @classmethod
     def get_and_check_path(cls, path_name: str) -> str:
         path_name = cls.get_full_path(path_name)
-        if not os.path.isdir(path_name):
+        if not Path(path_name).is_dir():
             raise AssertionError(f'Error: "{path_name}" is not a directory')
         return path_name
 
     @staticmethod
     def write_to_file(filename, data):
-        with open(filename, "w") as f:
-            f.write(data)
+        Path(filename).write_text(data)
 
     @classmethod
     def load_template_file(cls, template):
         filename = cls.TEMPLATES.get(template, {}).get("file", "")
         if not filename:
             raise AssertionError(f"Error: No file configured for {template}")
-        filepath = os.path.join(cls.get_full_path(cls.TEMPLATE_DIR), filename)
-        if not os.path.isfile(filepath):
+        filepath = Path(cls.get_full_path(cls.TEMPLATE_DIR)) / filename
+        if not filepath.is_file():
             raise AssertionError(f'Error: Template file "{filepath}" not found')
-        with open(filepath, "r") as f:
-            return f.read()
+        return filepath.read_text()
 
 
 class ConfigInstaller(InstallerBase):
@@ -48,7 +46,7 @@ class ConfigInstaller(InstallerBase):
         self.target_dir = self.get_and_check_path(target_dir)
         self.line_length = int(line_length) if line_length else None
         self.target_version = str(target_version) if target_version else None
-        self.toml_file = os.path.join(self.target_dir, "pyproject.toml")
+        self.toml_file = Path(self.target_dir) / "pyproject.toml"
 
     def _strip_ruff_sections(self, toml_data: str) -> str:
         """Remove all existing [tool.ruff*] sections so they can be replaced cleanly."""
@@ -60,7 +58,7 @@ class ConfigInstaller(InstallerBase):
                 in_ruff = line.strip().startswith("[tool.ruff")
             if not in_ruff:
                 result.append(line)
-        return "\n".join(result).rstrip("\n") + "\n"
+        return ("\n".join(result).rstrip("\n")).strip() + "\n"
 
     def _apply_overrides(self, template: str) -> str:
         line_length = self.line_length if self.line_length else self.DEFAULT_LINE_LENGTH
@@ -71,9 +69,8 @@ class ConfigInstaller(InstallerBase):
 
     def install(self):
         existing = ""
-        if os.path.isfile(self.toml_file):
-            with open(self.toml_file, "r") as f:
-                existing = f.read()
+        if self.toml_file.is_file():
+            existing = self.toml_file.read_text()
 
         base = self._strip_ruff_sections(existing)
         template = self._apply_overrides(self.load_template_file("RUFF"))
@@ -88,7 +85,8 @@ class HookInstaller(InstallerBase):
     TEMPLATES = {"PRE_COMMIT": {"file": "pre-commit.sh"}}
 
     def __init__(self, target_dir, venv_dir=None):
-        self.git_hook_dir = self.get_and_check_path(os.path.join(target_dir, ".git", "hooks"))
+        hooks_path = str(Path(target_dir) / ".git" / "hooks")
+        self.git_hook_dir = Path(self.get_and_check_path(hooks_path))
         self.venv_dir = self.get_full_path(venv_dir) if venv_dir else None
 
     def generate_template(self):
@@ -98,13 +96,12 @@ class HookInstaller(InstallerBase):
         return template
 
     def install(self):
-        hook_file = os.path.join(self.git_hook_dir, "pre-commit")
-        if os.path.isfile(hook_file):
-            shutil.copy2(hook_file, hook_file + ".bak")
+        hook_file = self.git_hook_dir / "pre-commit"
+        if hook_file.is_file():
+            shutil.copy2(hook_file, hook_file.parent / (hook_file.name + ".bak"))
         hook_data = self.generate_template()
         self.write_to_file(hook_file, hook_data)
-        st = os.stat(hook_file)
-        os.chmod(hook_file, st.st_mode | 0o111)
+        hook_file.chmod(hook_file.stat().st_mode | 0o111)
 
 
 if __name__ == "__main__":
