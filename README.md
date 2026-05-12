@@ -14,9 +14,10 @@ When the hook runs on commit it:
 
 1. git
 2. Python 3.11+
-3. A bash-compatible shell
+3. pip
+4. A bash-compatible shell
 
-ruff will be installed automatically unless `-s` is passed.
+ruff will be installed automatically if not already present — into the active virtual environment if one is active, or globally via pip otherwise. Pass `-s` to skip automatic installation.
 
 ## How to install
 
@@ -31,7 +32,7 @@ The installer will:
 2. Write a `[tool.ruff]` config block into the target's `pyproject.toml`
 3. Install a pre-commit hook into `<target>/.git/hooks/pre-commit`
 
-If a virtual environment is active (`$VIRTUAL_ENV` is set), the hook will activate it before running ruff.
+If a virtual environment is active (`$VIRTUAL_ENV` is set), or if one is found inside the target directory (`.venv`, `venv`, or `env`), it will be used automatically — ruff will be installed into it if missing, and the hook will activate it before running.
 
 ### Install options
 

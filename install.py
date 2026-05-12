@@ -86,15 +86,17 @@ class ConfigInstaller(InstallerBase):
 class HookInstaller(InstallerBase):
     TEMPLATES = {"PRE_COMMIT": {"file": "pre-commit.sh"}}
 
-    def __init__(self, target_dir, venv_dir=None):
+    def __init__(self, target_dir, venv_dir=None, ruff_path=None):
         hooks_path = str(Path(target_dir) / ".git" / "hooks")
         self.git_hook_dir = Path(self.get_and_check_path(hooks_path))
         self.venv_dir = self.get_full_path(venv_dir) if venv_dir else None
+        self.ruff_path = ruff_path or "ruff"
 
     def generate_template(self):
         template = self.load_template_file("PRE_COMMIT")
         template = template.replace("{%%USEVENV%%}", "0" if self.venv_dir else "1")
         template = template.replace("{%%VENVDIR%%}", self.venv_dir if self.venv_dir else ".")
+        template = template.replace("{%%RUFFBIN%%}", self.ruff_path)
         return template
 
     def install(self):
@@ -136,6 +138,16 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--ruff-path",
+        required=False,
+        default="ruff",
+        type=str,
+        dest="ruff_path",
+        metavar="/path/to/ruff",
+        help="Absolute path to the ruff binary to embed in the hook (defaults to 'ruff')",
+    )
+
+    parser.add_argument(
         "--venv",
         required=False,
         default=None,
@@ -172,4 +184,4 @@ if __name__ == "__main__":
         ConfigInstaller(target_dir, argsd["line_length"], argsd["target_version"]).install()
 
     if not argsd["config_only"]:
-        HookInstaller(target_dir, argsd["venv_dir"]).install()
+        HookInstaller(target_dir, argsd["venv_dir"], argsd["ruff_path"]).install()

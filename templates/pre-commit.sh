@@ -12,8 +12,10 @@ if [ "${USE_VENV}" -eq 0 ]; then
   fi
 fi
 
+RUFF="{%%RUFFBIN%%}"
+
 printf "Formatting code using ruff...\n"
-ruff format .
+"${RUFF}" format .
 RUFF_FORMAT_RTN="$?"
 
 if [ "${RUFF_FORMAT_RTN}" -ne 0 ]; then
@@ -26,7 +28,7 @@ fi
 printf "Code formatting complete.\n\n"
 
 printf "Checking and fixing code using ruff...\n"
-ruff check --fix .
+"${RUFF}" check --fix .
 RUFF_CHECK_RTN="$?"
 
 if [ "${RUFF_CHECK_RTN}" -ne 0 ]; then

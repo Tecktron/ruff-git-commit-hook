@@ -107,6 +107,19 @@ fi
 DIR_PATH=$(abspath "${DIR}")
 IN_VENV=$(in_venv)
 
+VENV_AUTODETECTED=0
+if [ "${IN_VENV}" == 1 ]; then
+  for VENV_NAME in .venv venv env; do
+    VENV_CHECK="${DIR_PATH}${VENV_NAME}"
+    if [ -f "${VENV_CHECK}/bin/python" ]; then
+      VIRTUAL_ENV="${VENV_CHECK}"
+      IN_VENV=0
+      VENV_AUTODETECTED=1
+      break
+    fi
+  done
+fi
+
 if [ "${CONFIG_ONLY}" == 1 ]; then
   INSTALL_ARGS=("--config-only")
   [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
@@ -141,11 +154,60 @@ else
 fi
 
 if [ "${IN_VENV}" == 0 ]; then
-  printf "\e[1mVirtual environment found\e[0m at %s\n" "${VIRTUAL_ENV}"
+  if [ "${VENV_AUTODETECTED}" == 1 ]; then
+    printf "\e[1mVirtual environment auto-detected\e[0m at %s\n" "${VIRTUAL_ENV}"
+  else
+    printf "\e[1mVirtual environment active\e[0m at %s\n" "${VIRTUAL_ENV}"
+  fi
+fi
+
+RUFF_PATH=""
+
+if [ "${IN_VENV}" == 0 ]; then
+  printf "Checking if \e[1mruff\e[0m is in virtual environment..."
+  if [ -f "${VIRTUAL_ENV}/bin/ruff" ]; then
+    printf "\e[1;92m Pass \e[0m\n"
+  else
+    printf "\e[1;91m Not found \e[0m\n"
+    if [ "${SKIP_PACKAGES}" == 0 ]; then
+      printf "\e[36mInstalling ruff into virtual environment\e[0m...\n"
+      "${VIRTUAL_ENV}/bin/python" -m pip install --upgrade ruff >&2
+      if [ "$?" != 0 ]; then
+        printf "\e[1;41;31mFailed to install ruff into virtual environment\e[0m\n"
+        exit 1
+      fi
+    else
+      printf "\e[1;41;31mRequirements missing\e[0m\n"
+      printf "Please install ruff in your virtual environment and try again\n"
+      exit 1
+    fi
+  fi
+  RUFF_PATH="${VIRTUAL_ENV}/bin/ruff"
 fi
 
 if [ "${GITHOOK_ONLY}" == 1 ]; then
-  INSTALL_ARGS=("--githook-only")
+  if [ -z "${RUFF_PATH}" ]; then
+    printf "Checking if \e[1mruff\e[0m is installed..."
+    if [ "$(program_is_installed 'ruff')" == 1 ]; then
+      printf "\e[1;91m Fail \e[0m\n"
+      if [ "${SKIP_PACKAGES}" == 0 ]; then
+        printf "\e[36mAttempting install of ruff\e[0m..."
+        INSTALLED="$(install_python_package ruff)"
+        if [ "${INSTALLED}" != 0 ]; then
+          printf "\e[1;41;31mFailed to install ruff\e[0m\n"
+          exit 1
+        fi
+      else
+        printf "\e[1;41;31mRequirements missing\e[0m\n"
+        printf "Please install ruff and try again\n"
+        exit 1
+      fi
+    else
+      printf "\e[1;92m Pass \e[0m\n"
+    fi
+    RUFF_PATH=$(type -P ruff)
+  fi
+  INSTALL_ARGS=("--githook-only" "--ruff-path=${RUFF_PATH}")
   [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
   python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
   exit "$?"
@@ -209,16 +271,19 @@ else
   fi
 fi
 
-printf "Checking if \e[1mruff\e[0m is installed..."
-if [ "$(program_is_installed 'ruff')" == 1 ]; then
-  printf "\e[1;91m Fail \e[0m\n"
-  if [ "${SKIP_PACKAGES}" == 0 ]; then
-    printf "\e[36mAttempting install of ruff\e[0m..."
-    INSTALLED="$(install_python_package ruff)"
-    [ "${INSTALLED}" != 0 ] && pass=1
+if [ -z "${RUFF_PATH}" ]; then
+  printf "Checking if \e[1mruff\e[0m is installed..."
+  if [ "$(program_is_installed 'ruff')" == 1 ]; then
+    printf "\e[1;91m Fail \e[0m\n"
+    if [ "${SKIP_PACKAGES}" == 0 ]; then
+      printf "\e[36mAttempting install of ruff\e[0m..."
+      INSTALLED="$(install_python_package ruff)"
+      [ "${INSTALLED}" != 0 ] && pass=1
+    fi
+  else
+    printf "\e[1;92m Pass \e[0m\n"
   fi
-else
-  printf "\e[1;92m Pass \e[0m\n"
+  RUFF_PATH=$(type -P ruff)
 fi
 
 printf "\n"
@@ -231,5 +296,6 @@ fi
 INSTALL_ARGS=()
 [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
 [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
+INSTALL_ARGS+=("--ruff-path=${RUFF_PATH}")
 [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
 python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
