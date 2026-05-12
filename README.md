@@ -1,18 +1,94 @@
 # Git Pre-Commit Python Linters
 
-## What is does:
-This package will install a pre-commit git hook that automatically lints and checks python code using black, isort and flake8
+## What it does
 
-## Requirments:
+Installs a pre-commit git hook that automatically formats and lints Python code using **ruff** before each commit. It also writes a `[tool.ruff]` config block into the target project's `pyproject.toml`.
+
+When the hook runs on commit it:
+1. Runs `ruff format` to auto-format code
+2. Runs `ruff check --fix` to auto-fix lint issues
+3. Re-stages any files modified by the above
+4. Aborts the commit if unfixable lint errors remain
+
+## Requirements
+
 1. git
-2. python3
-3. a bash compatible shell
+2. Python 3.11+
+3. A bash-compatible shell
 
-## How to install:
-1. Run the `install.sh` file
+ruff will be installed automatically unless `-s` is passed.
 
-## How it works:
-It installs the python packages globally, check for the settings file and updates them as needed and then adds a precommit webhook into your .git directory that run them to update and check your code. This happens before you commit.
+## How to install
 
-## How to config:
-A based set of configs is store in the ... files, you are free to change and adjust these to suit your project's needs.
+Run `install.sh` with the path to the project you want to install the hook into:
+
+```bash
+bash install.sh /path/to/your/project
+```
+
+The installer will:
+1. Check/install ruff
+2. Write a `[tool.ruff]` config block into the target's `pyproject.toml`
+3. Install a pre-commit hook into `<target>/.git/hooks/pre-commit`
+
+If a virtual environment is active (`$VIRTUAL_ENV` is set), the hook will activate it before running ruff.
+
+### Install options
+
+| Flag | Description |
+|------|-------------|
+| `-h` | Show help and exit |
+| `-s` | Skip package installation — abort instead of installing ruff if not found |
+| `-w` | Git hook only — skip writing `pyproject.toml` config |
+| `-c` | Config only — skip installing the git hook |
+| `-l #` | Set ruff line length (default: 120) |
+| `-t v` | Set Python target version (default: py312) |
+
+Only one of `-w` / `-c` may be used at a time.
+
+### Examples
+
+```bash
+# Full install into ~/projects/myapp
+bash install.sh ~/projects/myapp
+
+# Install with a custom line length
+bash install.sh -l 88 ~/projects/myapp
+
+# Write config only, no hook
+bash install.sh -c ~/projects/myapp
+
+# Install hook only, no config changes
+bash install.sh -w ~/projects/myapp
+```
+
+## Configuration
+
+The installer writes a `[tool.ruff]` block (and subsections) into the target's `pyproject.toml`, replacing any existing ruff config. The block is sourced from `templates/ruff.pyproject.toml`.
+
+Default settings:
+
+| Setting | Default |
+|---------|---------|
+| `line-length` | 120 |
+| `target-version` | py312 |
+
+Override at install time with `-l` (line length) and `-t` (target version). The config can be freely edited after installation.
+
+## Manual installation
+
+To install without the shell script, run `install.py` directly:
+
+```bash
+python3 install.py [--line-length 120] [--target-version py312] [--venv /path/to/venv] /path/to/project
+python3 install.py --config-only /path/to/project
+python3 install.py --githook-only [--venv /path/to/venv] /path/to/project
+```
+
+## Help and support
+
+If you find a bug or want to request a feature, please search the GitHub issues first. If it doesn't exist, open a new ticket with as much detail as possible about how to reproduce the issue or what you'd like to see.
+
+## Contributing
+
+This is an open source project — contributions are welcome.

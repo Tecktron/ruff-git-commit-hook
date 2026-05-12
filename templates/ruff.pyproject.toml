@@ -1,0 +1,32 @@
+[tool.ruff]
+line-length = {%%LINE_LENGTH%%}
+target-version = "{%%TARGET_VERSION%%}"
+extend-exclude = [
+    '.idea',
+    '.eggs',
+    '.git',
+    '.hg',
+    '*.sh',
+    'static',
+    '.*_cache',
+    '.venv',
+    'venv',
+    '_build',
+    'build',
+    'dist',
+    'configs',
+    'docker',
+    '.egg-info',
+    '.pytest_cache'
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "S", "C4", "N", "DJ", "PT", "I", "PTH"]
+ignore = ["E501", "S101"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

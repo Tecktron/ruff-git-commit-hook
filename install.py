@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+
+import abc
+import argparse
+import os
+import shutil
+
+
+class InstallerBase(abc.ABC):
+    TEMPLATE_DIR = "./templates/"
+    TEMPLATES = {}
+
+    @staticmethod
+    def get_full_path(path_name: str) -> str:
+        return str(os.path.abspath(os.path.expanduser(os.path.expandvars(path_name))))
+
+    @classmethod
+    def get_and_check_path(cls, path_name: str) -> str:
+        path_name = cls.get_full_path(path_name)
+        if not os.path.isdir(path_name):
+            raise AssertionError(f'Error: "{path_name}" is not a directory')
+        return path_name
+
+    @staticmethod
+    def write_to_file(filename, data):
+        with open(filename, "w") as f:
+            f.write(data)
+
+    @classmethod
+    def load_template_file(cls, template):
+        filename = cls.TEMPLATES.get(template, {}).get("file", "")
+        if not filename:
+            raise AssertionError(f"Error: No file configured for {template}")
+        filepath = os.path.join(cls.get_full_path(cls.TEMPLATE_DIR), filename)
+        if not os.path.isfile(filepath):
+            raise AssertionError(f'Error: Template file "{filepath}" not found')
+        with open(filepath, "r") as f:
+            return f.read()
+
+
+class ConfigInstaller(InstallerBase):
+    TEMPLATES = {"RUFF": {"file": "ruff.pyproject.toml"}}
+
+    DEFAULT_LINE_LENGTH = 120
+    DEFAULT_TARGET_VERSION = "py312"
+
+    def __init__(self, target_dir, line_length=None, target_version=None):
+        self.target_dir = self.get_and_check_path(target_dir)
+        self.line_length = int(line_length) if line_length else None
+        self.target_version = str(target_version) if target_version else None
+        self.toml_file = os.path.join(self.target_dir, "pyproject.toml")
+
+    def _strip_ruff_sections(self, toml_data: str) -> str:
+        """Remove all existing [tool.ruff*] sections so they can be replaced cleanly."""
+        lines = toml_data.split("\n")
+        result = []
+        in_ruff = False
+        for line in lines:
+            if line.strip().startswith("["):
+                in_ruff = line.strip().startswith("[tool.ruff")
+            if not in_ruff:
+                result.append(line)
+        return "\n".join(result).rstrip("\n") + "\n"
+
+    def _apply_overrides(self, template: str) -> str:
+        line_length = self.line_length if self.line_length else self.DEFAULT_LINE_LENGTH
+        target_version = self.target_version if self.target_version else self.DEFAULT_TARGET_VERSION
+        template = template.replace("{%%LINE_LENGTH%%}", str(line_length))
+        template = template.replace("{%%TARGET_VERSION%%}", target_version)
+        return template
+
+    def install(self):
+        existing = ""
+        if os.path.isfile(self.toml_file):
+            with open(self.toml_file, "r") as f:
+                existing = f.read()
+
+        base = self._strip_ruff_sections(existing)
+        template = self._apply_overrides(self.load_template_file("RUFF"))
+
+        if not base.endswith("\n\n"):
+            base = base.rstrip("\n") + "\n\n"
+
+        self.write_to_file(self.toml_file, base + template)
+
+
+class HookInstaller(InstallerBase):
+    TEMPLATES = {"PRE_COMMIT": {"file": "pre-commit.sh"}}
+
+    def __init__(self, target_dir, venv_dir=None):
+        self.git_hook_dir = self.get_and_check_path(os.path.join(target_dir, ".git", "hooks"))
+        self.venv_dir = self.get_full_path(venv_dir) if venv_dir else None
+
+    def generate_template(self):
+        template = self.load_template_file("PRE_COMMIT")
+        template = template.replace("{%%USEVENV%%}", "0" if self.venv_dir else "1")
+        template = template.replace("{%%VENVDIR%%}", self.venv_dir if self.venv_dir else ".")
+        return template
+
+    def install(self):
+        hook_file = os.path.join(self.git_hook_dir, "pre-commit")
+        if os.path.isfile(hook_file):
+            shutil.copy2(hook_file, hook_file + ".bak")
+        hook_data = self.generate_template()
+        self.write_to_file(hook_file, hook_data)
+        st = os.stat(hook_file)
+        os.chmod(hook_file, st.st_mode | 0o111)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="Precommit Ruff Setup",
+        description=(
+            "Sets up and configures a pre-commit git hook that automatically runs ruff "
+            "(format + lint) on your code before each commit."
+        ),
+    )
+
+    parser.add_argument(
+        "--line-length",
+        required=False,
+        default=None,
+        type=int,
+        dest="line_length",
+        metavar="120",
+        help=f"Line length for ruff (optional, defaults to {ConfigInstaller.DEFAULT_LINE_LENGTH})",
+    )
+
+    parser.add_argument(
+        "--target-version",
+        required=False,
+        default=None,
+        type=str,
+        dest="target_version",
+        metavar="py312",
+        help=f"Target Python version for ruff (optional, defaults to {ConfigInstaller.DEFAULT_TARGET_VERSION})",
+    )
+
+    parser.add_argument(
+        "--venv",
+        required=False,
+        default=None,
+        type=str,
+        dest="venv_dir",
+        metavar="/path/to/venv",
+        help="Activate this virtual environment before running ruff in the hook",
+    )
+
+    parser.add_argument(
+        "--config-only",
+        required=False,
+        default=False,
+        action="store_true",
+        dest="config_only",
+        help="Only write config files; skip installing the git hook",
+    )
+
+    parser.add_argument(
+        "--githook-only",
+        required=False,
+        default=False,
+        action="store_true",
+        dest="githook_only",
+        help="Only install the git hook; skip writing config files",
+    )
+
+    parser.add_argument("install_directory", type=str, help="Target project directory")
+
+    argsd = vars(parser.parse_args())
+    target_dir = argsd["install_directory"]
+
+    if not argsd["githook_only"]:
+        ConfigInstaller(target_dir, argsd["line_length"], argsd["target_version"]).install()
+
+    if not argsd["config_only"]:
+        HookInstaller(target_dir, argsd["venv_dir"]).install()

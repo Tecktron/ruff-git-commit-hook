@@ -1,0 +1,46 @@
+[tool.ruff]
+# Match PyCharm's default 120-character standard
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    '.idea',
+    '.eggs',
+    '.git',
+    '.hg',
+    '*.sh',
+    'static',
+    '.*_cache',
+    '.venv',
+    'venv',
+    '_build',
+    'build',
+    'dist',
+    'configs',
+    'docker',
+    '.egg-info',
+    '.pytest_cache'
+]
+
+[tool.ruff.lint]
+# UP: pyupgrade
+# B: flake8-bugbear
+# S: flake8-bandit (Security)
+# C4: flake8-comprehensions
+# N: pep8-naming
+# DJ: flake8-django
+# PT: flake8-pytest-style
+# I: isort (Import sorting)
+# PTH: flake8-use-pathlib
+select = ["E", "F", "UP", "B", "S", "C4", "N", "DJ", "PT", "I", "PTH"]
+
+# Optional: Ignore E501 (line-too-long) to let the formatter handle it quietly
+ignore = ["E501", "S101"]
+
+[tool.ruff.lint.isort]
+# Ensures imports are grouped nicely (standard lib, third-party, local)
+combine-as-imports = true
+
+[tool.ruff.format]
+# Keep Black-compatible formatting while respecting the 120 line length
+quote-style = "double"
+indent-style = "space"
