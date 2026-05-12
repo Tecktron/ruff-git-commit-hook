@@ -75,8 +75,10 @@ class ConfigInstaller(InstallerBase):
         base = self._strip_ruff_sections(existing)
         template = self._apply_overrides(self.load_template_file("RUFF"))
 
-        if not base.endswith("\n\n"):
+        if base.strip():
             base = base.rstrip("\n") + "\n\n"
+        else:
+            base = ""
 
         self.write_to_file(self.toml_file, base + template)
 
