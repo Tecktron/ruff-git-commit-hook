@@ -3,11 +3,18 @@
 *.iml
 
 # environments
-*venv*/
+.venv/
+venv/
+env/
 .tox/
 *.pid
 .env
 
-# MemPalace per-project files (issue #185)
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# local tool config
 mempalace.yaml
 entities.json

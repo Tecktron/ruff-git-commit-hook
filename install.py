@@ -23,7 +23,7 @@ class InstallerBase:
 
     @staticmethod
     def write_to_file(filename, data):
-        Path(filename).write_text(data)
+        Path(filename).write_text(data, encoding="utf-8")
 
     @classmethod
     def load_template_file(cls, template):

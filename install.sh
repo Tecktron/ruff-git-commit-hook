@@ -191,6 +191,12 @@ if [ "${IN_VENV}" == 0 ]; then
     fi
   fi
   RUFF_PATH="${VIRTUAL_ENV}/bin/ruff"
+
+  if [ "${pass}" == 1 ]; then
+    printf "\e[1;41;31mRequirements missing\e[0m\n"
+    printf "Please install the requirements and try again\n"
+    exit 1
+  fi
 else
   # No venv: check Python, then pip, then ruff — in that order
   printf "Checking if \e[1mPython 3\e[0m is installed..."
