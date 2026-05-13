@@ -77,15 +77,16 @@ Default settings:
 |---------|---------|
 | `line-length` | 120 |
 | `target-version` | py312 |
+| Django rules (`DJ`) | enabled |
 
-Override at install time with `-l` (line length) and `-t` (target version). The config can be freely edited after installation.
+Override at install time with `-l` (line length), `-t` (target version), and `-d` (disable Django rules). The config can be freely edited after installation.
 
 ## Manual installation
 
 To install without the shell script, run `install.py` directly:
 
 ```bash
-python3 install.py [--line-length 120] [--target-version py312] [--venv /path/to/venv] /path/to/project
+python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--venv /path/to/venv] /path/to/project
 python3 install.py --config-only /path/to/project
 python3 install.py --githook-only [--venv /path/to/venv] /path/to/project
 ```
