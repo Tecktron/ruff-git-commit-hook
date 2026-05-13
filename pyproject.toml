@@ -1,3 +1,22 @@
+[project]
+name = "ruff-git-commit-hook"
+version = "1.0.0"
+description = "Installs a ruff-based pre-commit git hook and pyproject.toml config into a target Python project"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Craig Holden"}
+]
+
+[project.urls]
+Homepage = "https://github.com/Tecktron/ruff-git-commit-hook"
+Issues = "https://github.com/Tecktron/ruff-git-commit-hook/issues"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"

@@ -15,6 +15,7 @@ function show_help {
   printf "\nOptional config choices (skipped if -w is used)\n"
   printf " -l # | Specify a custom line length (optional, default is 120)\n"
   printf " -t v | Specify a Python target version (optional, default is py312)\n"
+  printf " -d   | Disable Django lint rules (DJ) in the ruff config\n"
   printf "\n"
 }
 
@@ -80,6 +81,7 @@ printf "\e[1;106;35mRuff Git Hook Installer\e[0m\n"
 SKIP_PACKAGES=0
 GITHOOK_ONLY=0
 CONFIG_ONLY=0
+NO_DJANGO=0
 LL=""
 TV=""
 
@@ -90,6 +92,7 @@ do
     "-s") SKIP_PACKAGES=1 ;;
     "-w") GITHOOK_ONLY=1 ;;
     "-c") CONFIG_ONLY=1 ;;
+    "-d") NO_DJANGO=1 ;;
     "-l") LL=$2; shift ;;
     "-t") TV=$2; shift ;;
     *) DIR=$1 ;;
@@ -130,9 +133,18 @@ if [ "${CONFIG_ONLY}" == 1 ]; then
     exit 1
   fi
   printf "\e[1;92m Pass \e[0m\n"
+  printf "Checking if \e[1mPython version\e[0m is minimum \e[1m3.11\e[0m..."
+  if [ "$(check_python_version)" == 1 ]; then
+    printf "\e[1;91m Fail \e[0m\n"
+    printf "\e[1;41;31mRequirements missing\e[0m\n"
+    printf "Please install Python 3.11 or greater and try again\n"
+    exit 1
+  fi
+  printf "\e[1;92m Pass \e[0m\n"
   INSTALL_ARGS=("--config-only")
   [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
   [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
+  [ "${NO_DJANGO}" == 1 ] && INSTALL_ARGS+=("--no-django")
   python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
   exit "$?"
 fi
@@ -291,6 +303,7 @@ fi
 INSTALL_ARGS=()
 [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
 [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
+[ "${NO_DJANGO}" == 1 ] && INSTALL_ARGS+=("--no-django")
 INSTALL_ARGS+=("--ruff-path=${RUFF_PATH}")
 [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
 python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"

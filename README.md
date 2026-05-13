@@ -44,6 +44,7 @@ If a virtual environment is active (`$VIRTUAL_ENV` is set), or if one is found i
 | `-c` | Config only — skip installing the git hook |
 | `-l #` | Set ruff line length (default: 120) |
 | `-t v` | Set Python target version (default: py312) |
+| `-d` | Exclude Django lint rules (`DJ`) from the ruff config |
 
 Only one of `-w` / `-c` may be used at a time.
 
@@ -55,6 +56,9 @@ bash install.sh ~/projects/myapp
 
 # Install with a custom line length
 bash install.sh -l 88 ~/projects/myapp
+
+# Install without Django lint rules
+bash install.sh -d ~/projects/myapp
 
 # Write config only, no hook
 bash install.sh -c ~/projects/myapp

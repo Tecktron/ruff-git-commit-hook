@@ -41,11 +41,13 @@ class ConfigInstaller(InstallerBase):
 
     DEFAULT_LINE_LENGTH = 120
     DEFAULT_TARGET_VERSION = "py312"
+    DEFAULT_NO_DJANGO = False
 
-    def __init__(self, target_dir, line_length=None, target_version=None):
+    def __init__(self, target_dir, line_length=None, target_version=None, no_django=False):
         self.target_dir = self.get_and_check_path(target_dir)
         self.line_length = int(line_length) if line_length else None
         self.target_version = str(target_version) if target_version else None
+        self.no_django = bool(no_django)
         self.toml_file = Path(self.target_dir) / "pyproject.toml"
 
     def _strip_ruff_sections(self, toml_data: str) -> str:
@@ -63,8 +65,10 @@ class ConfigInstaller(InstallerBase):
     def _apply_overrides(self, template: str) -> str:
         line_length = self.line_length if self.line_length else self.DEFAULT_LINE_LENGTH
         target_version = self.target_version if self.target_version else self.DEFAULT_TARGET_VERSION
+        django_entry = "" if self.no_django else '"DJ", '
         template = template.replace("{%%LINE_LENGTH%%}", str(line_length))
         template = template.replace("{%%TARGET_VERSION%%}", target_version)
+        template = template.replace("{%%DJANGO%%}", django_entry)
         return template
 
     def install(self):
@@ -158,6 +162,15 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--no-django",
+        required=False,
+        default=False,
+        action="store_true",
+        dest="no_django",
+        help="Exclude Django-specific lint rules (DJ) from the ruff config",
+    )
+
+    parser.add_argument(
         "--config-only",
         required=False,
         default=False,
@@ -181,7 +194,7 @@ if __name__ == "__main__":
     target_dir = argsd["install_directory"]
 
     if not argsd["githook_only"]:
-        ConfigInstaller(target_dir, argsd["line_length"], argsd["target_version"]).install()
+        ConfigInstaller(target_dir, argsd["line_length"], argsd["target_version"], argsd["no_django"]).install()
 
     if not argsd["config_only"]:
         HookInstaller(target_dir, argsd["venv_dir"], argsd["ruff_path"]).install()
