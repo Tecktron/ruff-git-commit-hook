@@ -5,7 +5,7 @@ RUFF="{%%RUFFBIN%%}"
 
 if [ "${USE_VENV}" -eq 0 ]; then
   if [ -z "${VIRTUAL_ENV}" ]; then
-    printf "Starting virtual environment...\n"
+    printf "Activating virtual environment...\n"
     VENV_DIR="{%%VENVDIR%%}"
     . "${VENV_DIR}/bin/activate"
   else
@@ -50,8 +50,11 @@ fi
 printf "Linting checks passed.\n\n"
 
 printf '%s\n' "${STAGED_FILES}" | tr '\n' '\0' | xargs -0 git add
+GIT_ADD_RTN="$?"
 
 if [ "${USE_VENV}" -eq 0 ]; then
   printf "Deactivating virtual environment\n"
   deactivate
 fi
+
+exit "${GIT_ADD_RTN}"

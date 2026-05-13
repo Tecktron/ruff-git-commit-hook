@@ -57,7 +57,7 @@ class ConfigInstaller(InstallerBase):
         in_ruff = False
         for line in lines:
             if line.strip().startswith("["):
-                in_ruff = line.strip().startswith("[tool.ruff")
+                in_ruff = line.strip().startswith("[tool.ruff]") or line.strip().startswith("[tool.ruff.")
             if not in_ruff:
                 result.append(line)
         return ("\n".join(result).rstrip("\n")).strip() + "\n"
@@ -91,7 +91,20 @@ class HookInstaller(InstallerBase):
     TEMPLATES = {"PRE_COMMIT": {"file": "pre-commit.sh"}}
 
     def __init__(self, target_dir, venv_dir=None, ruff_path=None):
-        hooks_path = str(Path(target_dir) / ".git" / "hooks")
+        git_path = Path(target_dir) / ".git"
+        if git_path.is_dir():
+            hooks_path = str(git_path / "hooks")
+        elif git_path.is_file():
+            gitdir_text = git_path.read_text().strip()
+            if not gitdir_text.startswith("gitdir: "):
+                raise AssertionError(f'Error: Cannot parse .git file at "{git_path}"')
+            gitdir = Path(gitdir_text[8:])
+            if not gitdir.is_absolute():
+                gitdir = Path(target_dir) / gitdir
+            # worktree gitdir is <common>/.git/worktrees/<name>; hooks live two levels up
+            hooks_path = str(gitdir.parent.parent / "hooks")
+        else:
+            raise AssertionError(f'Error: No .git directory or file found at "{target_dir}"')
         self.git_hook_dir = Path(self.get_and_check_path(hooks_path))
         self.venv_dir = self.get_full_path(venv_dir) if venv_dir else None
         self.ruff_path = ruff_path or "ruff"

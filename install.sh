@@ -233,15 +233,17 @@ else
   fi
 
   pass=0
-  LOCAL_PY_DIR=$(python3 -m site --user-site)
-  printf "Check for local Python package path in \$PATH..."
+  LOCAL_PATH_MISSING=0
+  PIP_MISSING=0
+  LOCAL_PY_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))")
+  printf "Checking for local Python package path in \$PATH..."
   case :$PATH: in
     *:"${LOCAL_PY_DIR}":*)
       printf "\e[1;92m Pass \e[0m\n"
       ;;
     *)
       printf "\e[1;91m Fail \e[0m\n"
-      [ "${SKIP_PACKAGES}" == 0 ] && pass=1
+      LOCAL_PATH_MISSING=1
       ;;
   esac
 
@@ -267,7 +269,7 @@ else
         wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
         python3 /tmp/get-pip.py --prefix=/usr/local/
       else
-        pass=1
+        PIP_MISSING=1
       fi
     fi
   fi
@@ -276,9 +278,13 @@ else
   if [ "$(program_is_installed 'ruff')" == 1 ]; then
     printf "\e[1;91m Fail \e[0m\n"
     if [ "${SKIP_PACKAGES}" == 0 ]; then
-      printf "\e[36mAttempting install of ruff\e[0m..."
-      INSTALLED="$(install_python_package ruff)"
-      [ "${INSTALLED}" != 0 ] && pass=1
+      if [ "${LOCAL_PATH_MISSING}" == 1 ] || [ "${PIP_MISSING}" == 1 ]; then
+        pass=1
+      else
+        printf "\e[36mAttempting to install ruff\e[0m..."
+        INSTALLED="$(install_python_package ruff)"
+        [ "${INSTALLED}" != 0 ] && pass=1
+      fi
     fi
   else
     printf "\e[1;92m Pass \e[0m\n"

@@ -46,7 +46,7 @@ If a virtual environment is active (`$VIRTUAL_ENV` is set), or if one is found i
 | `-t v` | Set Python target version (default: py312) |
 | `-d` | Exclude Django lint rules (`DJ`) from the ruff config |
 
-Only one of `-w` / `-c` may be used at a time.
+If both `-w` and `-c` are passed, `-c` takes precedence — only the config is written and the hook is not installed.
 
 ### Examples
 
@@ -86,9 +86,9 @@ Override at install time with `-l` (line length), `-t` (target version), and `-d
 To install without the shell script, run `install.py` directly:
 
 ```bash
-python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--venv /path/to/venv] /path/to/project
-python3 install.py --config-only /path/to/project
-python3 install.py --githook-only [--venv /path/to/venv] /path/to/project
+python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
+python3 install.py --config-only [--line-length 120] [--target-version py312] [--no-django] /path/to/project
+python3 install.py --githook-only [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
 ```
 
 ## Help and support

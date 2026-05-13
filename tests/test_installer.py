@@ -61,6 +61,12 @@ class TestStripRuffSections:
         assert installer._strip_ruff_sections("").endswith("\n")
         assert installer._strip_ruff_sections("[tool.ruff]\nfoo = 1\n").endswith("\n")
 
+    def test_does_not_strip_ruff_lsp_section(self, installer):
+        content = "[tool.ruff-lsp]\nsettings = {}\n\n[tool.ruff]\nline-length = 120\n"
+        result = installer._strip_ruff_sections(content)
+        assert "[tool.ruff-lsp]" in result
+        assert "[tool.ruff]" not in result
+
 
 # ---------------------------------------------------------------------------
 # ConfigInstaller._apply_overrides
@@ -185,6 +191,12 @@ class TestHookInstallerGenerateTemplate:
         result = HookInstaller(str(target)).generate_template()
         assert "{%%" not in result
 
+    def test_git_add_exit_code_propagated(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        result = HookInstaller(str(target)).generate_template()
+        assert "GIT_ADD_RTN" in result
+        assert 'exit "${GIT_ADD_RTN}"' in result
+
 
 # ---------------------------------------------------------------------------
 # HookInstaller.install
@@ -218,3 +230,27 @@ class TestHookInstallerInstall:
         hook.write_text("#!/bin/sh\necho old\n", encoding="utf-8")
         HookInstaller(str(target)).install()
         assert "echo old" not in hook.read_text(encoding="utf-8")
+
+    def test_worktree_resolves_to_common_hooks_dir(self, tmp_path):
+        # Simulate a git worktree: main repo has .git/ dir, worktree has .git file
+        main_repo = tmp_path / "main"
+        main_repo.mkdir()
+        (main_repo / ".git" / "hooks").mkdir(parents=True)
+        (main_repo / ".git" / "worktrees" / "feature").mkdir(parents=True)
+
+        worktree = tmp_path / "feature"
+        worktree.mkdir()
+        gitdir_path = main_repo / ".git" / "worktrees" / "feature"
+        (worktree / ".git").write_text(f"gitdir: {gitdir_path}\n", encoding="utf-8")
+
+        HookInstaller(str(worktree)).install()
+        assert (main_repo / ".git" / "hooks" / "pre-commit").is_file()
+
+    def test_no_git_dir_raises(self, tmp_path):
+        with pytest.raises(AssertionError, match="No .git directory or file found"):
+            HookInstaller(str(tmp_path))
+
+    def test_malformed_git_file_raises(self, tmp_path):
+        (tmp_path / ".git").write_text("not a gitdir pointer\n", encoding="utf-8")
+        with pytest.raises(AssertionError, match="Cannot parse .git file"):
+            HookInstaller(str(tmp_path))
