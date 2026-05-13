@@ -120,7 +120,16 @@ if [ "${IN_VENV}" == 1 ]; then
   done
 fi
 
+# CONFIG_ONLY: only needs Python to run install.py — no git/pip/ruff required
 if [ "${CONFIG_ONLY}" == 1 ]; then
+  printf "Checking if \e[1mPython 3\e[0m is installed..."
+  if [ "$(program_is_installed 'python3')" == 1 ]; then
+    printf "\e[1;91m Fail \e[0m\n"
+    printf "\e[1;41;31mRequirements missing\e[0m\n"
+    printf "Please install Python 3.11 or greater and try again\n"
+    exit 1
+  fi
+  printf "\e[1;92m Pass \e[0m\n"
   INSTALL_ARGS=("--config-only")
   [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
   [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
@@ -128,6 +137,7 @@ if [ "${CONFIG_ONLY}" == 1 ]; then
   exit "$?"
 fi
 
+# Git directory check
 GIT_DIR="${DIR_PATH}.git"
 if [ -f "${GIT_DIR}" ]; then
   GIT_FILE="${GIT_DIR}"
@@ -153,17 +163,15 @@ else
   printf "\e[1;92m Pass \e[0m\n"
 fi
 
+RUFF_PATH=""
+
 if [ "${IN_VENV}" == 0 ]; then
+  # Venv path: Python is implied by the venv; just check/install ruff inside it
   if [ "${VENV_AUTODETECTED}" == 1 ]; then
     printf "\e[1mVirtual environment auto-detected\e[0m at %s\n" "${VIRTUAL_ENV}"
   else
     printf "\e[1mVirtual environment active\e[0m at %s\n" "${VIRTUAL_ENV}"
   fi
-fi
-
-RUFF_PATH=""
-
-if [ "${IN_VENV}" == 0 ]; then
   printf "Checking if \e[1mruff\e[0m is in virtual environment..."
   if [ -f "${VIRTUAL_ENV}/bin/ruff" ]; then
     printf "\e[1;92m Pass \e[0m\n"
@@ -183,59 +191,30 @@ if [ "${IN_VENV}" == 0 ]; then
     fi
   fi
   RUFF_PATH="${VIRTUAL_ENV}/bin/ruff"
-fi
-
-if [ "${GITHOOK_ONLY}" == 1 ]; then
-  if [ -z "${RUFF_PATH}" ]; then
-    printf "Checking if \e[1mruff\e[0m is installed..."
-    if [ "$(program_is_installed 'ruff')" == 1 ]; then
-      printf "\e[1;91m Fail \e[0m\n"
-      if [ "${SKIP_PACKAGES}" == 0 ]; then
-        printf "\e[36mAttempting install of ruff\e[0m..."
-        INSTALLED="$(install_python_package ruff)"
-        if [ "${INSTALLED}" != 0 ]; then
-          printf "\e[1;41;31mFailed to install ruff\e[0m\n"
-          exit 1
-        fi
-      else
-        printf "\e[1;41;31mRequirements missing\e[0m\n"
-        printf "Please install ruff and try again\n"
-        exit 1
-      fi
-    else
-      printf "\e[1;92m Pass \e[0m\n"
-    fi
-    RUFF_PATH=$(type -P ruff)
-  fi
-  INSTALL_ARGS=("--githook-only" "--ruff-path=${RUFF_PATH}")
-  [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
-  python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
-  exit "$?"
-fi
-
-printf "Checking if \e[1mPython 3\e[0m is installed..."
-if [ "$(program_is_installed 'python3')" == 1 ]; then
-  printf "\e[1;91m Fail \e[0m\n"
-  pass=1
 else
-  printf "\e[1;92m Pass \e[0m\n"
-  printf "Checking if \e[1mPython version\e[0m is minimum \e[1m3.11\e[0m..."
-  if [ "$(check_python_version)" == 1 ]; then
+  # No venv: check Python, then pip, then ruff — in that order
+  printf "Checking if \e[1mPython 3\e[0m is installed..."
+  if [ "$(program_is_installed 'python3')" == 1 ]; then
     printf "\e[1;91m Fail \e[0m\n"
     pass=1
   else
     printf "\e[1;92m Pass \e[0m\n"
+    printf "Checking if \e[1mPython version\e[0m is minimum \e[1m3.11\e[0m..."
+    if [ "$(check_python_version)" == 1 ]; then
+      printf "\e[1;91m Fail \e[0m\n"
+      pass=1
+    else
+      printf "\e[1;92m Pass \e[0m\n"
+    fi
   fi
-fi
 
-if [ "${pass}" == 1 ]; then
-  printf "\e[1;41;31mRequirements missing\e[0m\n"
-  printf "Please install the requirements and try again\n"
-  exit 1
-fi
+  if [ "${pass}" == 1 ]; then
+    printf "\e[1;41;31mRequirements missing\e[0m\n"
+    printf "Please install the requirements and try again\n"
+    exit 1
+  fi
 
-pass=0
-if [ "${IN_VENV}" == 1 ]; then
+  pass=0
   LOCAL_PY_DIR=$(python3 -m site --user-site)
   printf "Check for local Python package path in \$PATH..."
   case :$PATH: in
@@ -247,36 +226,34 @@ if [ "${IN_VENV}" == 1 ]; then
       [ "${SKIP_PACKAGES}" == 0 ] && pass=1
       ;;
   esac
-fi
 
-printf "Checking if \e[1mPip3\e[0m is installed..."
-python3 -c "import pip" &> /dev/null
-PIP_INSTALLED="$?"
-if [ "${PIP_INSTALLED}" == 0 ]; then
-  printf "\e[1;92m Pass \e[0m\n"
-  if [ "${SKIP_PACKAGES}" == 0 ]; then
-    printf "Updating pip and tools..."
-    python3 -m pip install --upgrade pip setuptools wheel &> /dev/null
-    if [ "$?" == 0 ]; then
-      printf "\e[1;92m Done \e[0m\n"
-    else
-      printf "\e[0;33m Skipped (system-managed environment) \e[0m\n"
+  printf "Checking if \e[1mPip3\e[0m is installed..."
+  python3 -c "import pip" &> /dev/null
+  PIP_INSTALLED="$?"
+  if [ "${PIP_INSTALLED}" == 0 ]; then
+    printf "\e[1;92m Pass \e[0m\n"
+    if [ "${SKIP_PACKAGES}" == 0 ]; then
+      printf "Updating pip and tools..."
+      python3 -m pip install --upgrade pip setuptools wheel &> /dev/null
+      if [ "$?" == 0 ]; then
+        printf "\e[1;92m Done \e[0m\n"
+      else
+        printf "\e[0;33m Skipped (system-managed environment) \e[0m\n"
+      fi
+    fi
+  else
+    printf "\e[1;91m Fail \e[0m\n"
+    if [ "${SKIP_PACKAGES}" == 0 ]; then
+      if [ "$(program_is_installed 'wget')" == 0 ]; then
+        printf "Attempting to download and install pip...\n"
+        wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
+        python3 /tmp/get-pip.py --prefix=/usr/local/
+      else
+        pass=1
+      fi
     fi
   fi
-else
-  printf "\e[1;91m Fail \e[0m\n"
-  if [ "${SKIP_PACKAGES}" == 0 ]; then
-    if [ "$(program_is_installed 'wget')" == 0 ]; then
-      printf "Attempting to download and install pip...\n"
-      wget https://bootstrap.pypa.io/get-pip.py -P /tmp/get-pip.py
-      python3 /tmp/get-pip.py --prefix=/usr/local/
-    else
-      pass=1
-    fi
-  fi
-fi
 
-if [ -z "${RUFF_PATH}" ]; then
   printf "Checking if \e[1mruff\e[0m is installed..."
   if [ "$(program_is_installed 'ruff')" == 1 ]; then
     printf "\e[1;91m Fail \e[0m\n"
@@ -289,13 +266,20 @@ if [ -z "${RUFF_PATH}" ]; then
     printf "\e[1;92m Pass \e[0m\n"
   fi
   RUFF_PATH=$(type -P ruff)
+
+  printf "\n"
+  if [ "${pass}" == 1 ]; then
+    printf "\e[1;41;31mRequirements missing\e[0m\n"
+    printf "Please install the requirements and try again\n"
+    exit 1
+  fi
 fi
 
-printf "\n"
-if [ "${pass}" == 1 ]; then
-  printf "\e[1;41;31mRequirements missing\e[0m\n"
-  printf "Please install the requirements and try again\n"
-  exit 1
+if [ "${GITHOOK_ONLY}" == 1 ]; then
+  INSTALL_ARGS=("--githook-only" "--ruff-path=${RUFF_PATH}")
+  [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
+  python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
+  exit "$?"
 fi
 
 INSTALL_ARGS=()

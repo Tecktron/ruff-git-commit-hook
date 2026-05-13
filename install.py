@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import os
@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 class InstallerBase:
-    TEMPLATE_DIR = "./templates/"
+    TEMPLATE_DIR = Path(__file__).parent / "templates"
     TEMPLATES = {}
 
     @staticmethod
@@ -30,7 +30,7 @@ class InstallerBase:
         filename = cls.TEMPLATES.get(template, {}).get("file", "")
         if not filename:
             raise AssertionError(f"Error: No file configured for {template}")
-        filepath = Path(cls.get_full_path(cls.TEMPLATE_DIR)) / filename
+        filepath = cls.TEMPLATE_DIR / filename
         if not filepath.is_file():
             raise AssertionError(f'Error: Template file "{filepath}" not found')
         return filepath.read_text()

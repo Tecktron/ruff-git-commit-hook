@@ -88,7 +88,7 @@ python3 install.py --githook-only [--venv /path/to/venv] /path/to/project
 
 ## Help and support
 
-If you find a bug or want to request a feature, please search the GitHub issues first. If it doesn't exist, open a new ticket with as much detail as possible about how to reproduce the issue or what you'd like to see.
+If you find a bug or want to request a feature, please search the [GitHub issues](https://github.com/Tecktron/ruff-git-commit-hook/issues) first. If it doesn't exist, open a new ticket with as much detail as possible about how to reproduce the issue or what you'd like to see.
 
 ## Contributing
 

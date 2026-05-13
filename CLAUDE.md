@@ -1,5 +1,7 @@
 # ruff-git-commit-hook (Ruff Git Commit-hook Installer)
 
+> This file is a [CLAUDE.md](https://docs.anthropic.com/en/docs/claude-code/memory) — project context loaded automatically by Claude Code (Anthropic's AI coding assistant). It is safe to ignore if you are not using Claude Code.
+
 ## What this project does
 
 This tool installs a pre-commit git hook into a target project's `.git/hooks/` directory. The hook runs **ruff** (format + lint) automatically before each commit. It also writes a ruff config block into the target project's `pyproject.toml`.
