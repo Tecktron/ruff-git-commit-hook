@@ -1,4 +1,4 @@
-# Git Pre-Commit Python Linters
+# Ruff Git Commit-hook Installer
 
 ## What it does
 

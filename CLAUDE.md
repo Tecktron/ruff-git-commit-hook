@@ -1,4 +1,4 @@
-# git-precommit-pylinters
+# ruff-git-commit-hook (Ruff Git Commit-hook Installer)
 
 ## What this project does
 
