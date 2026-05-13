@@ -255,8 +255,13 @@ PIP_INSTALLED="$?"
 if [ "${PIP_INSTALLED}" == 0 ]; then
   printf "\e[1;92m Pass \e[0m\n"
   if [ "${SKIP_PACKAGES}" == 0 ]; then
-    printf "Updating pip and tools\n"
-    python3 -m pip install --upgrade pip setuptools wheel
+    printf "Updating pip and tools..."
+    python3 -m pip install --upgrade pip setuptools wheel &> /dev/null
+    if [ "$?" == 0 ]; then
+      printf "\e[1;92m Done \e[0m\n"
+    else
+      printf "\e[0;33m Skipped (system-managed environment) \e[0m\n"
+    fi
   fi
 else
   printf "\e[1;91m Fail \e[0m\n"
