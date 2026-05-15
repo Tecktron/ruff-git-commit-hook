@@ -41,15 +41,15 @@ Two classes, both inherit from `InstallerBase`:
 ## install.sh flow
 
 1. OS check (Linux/Mac only)
-2. Parse flags: `-h` help, `-s` skip packages, `-w` hook only, `-c` config only, `-l #` line length, `-t v` target version, `-d` no Django rules
+2. Parse flags: `-h` help, `-s` skip packages, `-w` hook only, `-c` config only, `-l #` line length, `-t v` target version, `-d` no Django rules, `-p path` toml path
 3. Detect active virtualenv (`$VIRTUAL_ENV`) or auto-detect one in the target dir (`.venv`, `venv`, `env`)
-4. `--config-only`: check python3 ≥ 3.11, call `install.py --config-only [--line-length=N] [--target-version=V] [--no-django]`, exit
+4. `--config-only`: check python3 ≥ 3.11, call `install.py --config-only [--line-length=N] [--target-version=V] [--no-django] [--toml-path=P]`, exit
 5. Validate target `.git` directory exists
 6. Check git is installed
 7. If venv active/detected: check/install ruff inside venv, set `RUFF_PATH`
 8. If no venv: check python3 ≥ 3.11, check pip3 (update pip), check/install ruff globally, set `RUFF_PATH`
 9. `--githook-only`: call `install.py --githook-only --ruff-path=RUFF_PATH [--venv $VIRTUAL_ENV]`, exit
-10. Call `install.py [--line-length=N] [--target-version=V] [--no-django] --ruff-path=RUFF_PATH [--venv $VIRTUAL_ENV]`
+10. Call `install.py [--line-length=N] [--target-version=V] [--no-django] [--toml-path=P] --ruff-path=RUFF_PATH [--venv $VIRTUAL_ENV]`
 
 ## Template placeholder system
 

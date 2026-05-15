@@ -16,6 +16,8 @@ function show_help {
   printf " -l # | Specify a custom line length (optional, default is 120)\n"
   printf " -t v | Specify a Python target version (optional, default is py312)\n"
   printf " -d   | Disable Django lint rules (DJ) in the ruff config\n"
+  printf " -p p | Specify a custom directory for pyproject.toml (optional, default is install path)\n"
+  printf "        Accepts an absolute path or a path relative to the install directory\n"
   printf "\n"
 }
 
@@ -84,6 +86,7 @@ CONFIG_ONLY=0
 NO_DJANGO=0
 LL=""
 TV=""
+TOML_PATH=""
 
 while [ $# -gt 0 ]
 do
@@ -95,6 +98,7 @@ do
     "-d") NO_DJANGO=1 ;;
     "-l") LL=$2; shift ;;
     "-t") TV=$2; shift ;;
+    "-p") TOML_PATH=$2; shift ;;
     *) DIR=$1 ;;
   esac
   shift
@@ -109,6 +113,10 @@ fi
 
 DIR_PATH=$(abspath "${DIR}")
 IN_VENV=$(in_venv)
+
+if [ "${GITHOOK_ONLY}" == 1 ] && [ -n "${TOML_PATH}" ]; then
+  printf "\e[0;33mWarning: -p is ignored when -w (git hook only) is used.\e[0m\n"
+fi
 
 VENV_AUTODETECTED=0
 if [ "${IN_VENV}" == 1 ]; then
@@ -145,6 +153,7 @@ if [ "${CONFIG_ONLY}" == 1 ]; then
   [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
   [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
   [ "${NO_DJANGO}" == 1 ] && INSTALL_ARGS+=("--no-django")
+  [ -n "${TOML_PATH}" ] && INSTALL_ARGS+=("--toml-path=${TOML_PATH}")
   python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
   exit "$?"
 fi
@@ -310,6 +319,7 @@ INSTALL_ARGS=()
 [ -n "${LL}" ] && INSTALL_ARGS+=("--line-length=${LL}")
 [ -n "${TV}" ] && INSTALL_ARGS+=("--target-version=${TV}")
 [ "${NO_DJANGO}" == 1 ] && INSTALL_ARGS+=("--no-django")
+[ -n "${TOML_PATH}" ] && INSTALL_ARGS+=("--toml-path=${TOML_PATH}")
 INSTALL_ARGS+=("--ruff-path=${RUFF_PATH}")
 [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
 python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"

@@ -159,6 +159,54 @@ class TestConfigInstallerInstall:
 
 
 # ---------------------------------------------------------------------------
+# ConfigInstaller — toml_path resolution
+# ---------------------------------------------------------------------------
+
+
+class TestConfigInstallerTomlPath:
+    def test_default_toml_file_is_in_target_dir(self, tmp_path):
+        installer = ConfigInstaller(str(tmp_path))
+        assert installer.toml_file == tmp_path / "pyproject.toml"
+
+    def test_absolute_toml_path_sets_toml_file(self, tmp_path):
+        toml_dir = tmp_path / "configs"
+        toml_dir.mkdir()
+        installer = ConfigInstaller(str(tmp_path), toml_path=str(toml_dir))
+        assert installer.toml_file == toml_dir / "pyproject.toml"
+
+    def test_relative_toml_path_resolved_against_target_dir(self, tmp_path):
+        (tmp_path / "backend").mkdir()
+        installer = ConfigInstaller(str(tmp_path), toml_path="./backend")
+        assert installer.toml_file == (tmp_path / "backend" / "pyproject.toml").resolve()
+
+    def test_nonexistent_toml_path_raises(self, tmp_path):
+        with pytest.raises(AssertionError, match="toml-path"):
+            ConfigInstaller(str(tmp_path), toml_path="./nonexistent")
+
+    def test_install_writes_to_absolute_toml_path(self, tmp_path):
+        toml_dir = tmp_path / "configs"
+        toml_dir.mkdir()
+        target_dir = tmp_path / "project"
+        target_dir.mkdir()
+        ConfigInstaller(str(target_dir), toml_path=str(toml_dir)).install()
+        assert (toml_dir / "pyproject.toml").is_file()
+        assert not (target_dir / "pyproject.toml").exists()
+
+    def test_install_writes_to_relative_toml_path(self, tmp_path):
+        (tmp_path / "backend").mkdir()
+        ConfigInstaller(str(tmp_path), toml_path="./backend").install()
+        assert (tmp_path / "backend" / "pyproject.toml").is_file()
+        assert not (tmp_path / "pyproject.toml").exists()
+
+    def test_install_written_file_contains_ruff_config(self, tmp_path):
+        toml_dir = tmp_path / "conf"
+        toml_dir.mkdir()
+        ConfigInstaller(str(tmp_path), toml_path=str(toml_dir)).install()
+        content = (toml_dir / "pyproject.toml").read_text(encoding="utf-8")
+        assert "[tool.ruff]" in content
+
+
+# ---------------------------------------------------------------------------
 # HookInstaller.generate_template
 # ---------------------------------------------------------------------------
 

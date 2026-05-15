@@ -43,12 +43,19 @@ class ConfigInstaller(InstallerBase):
     DEFAULT_TARGET_VERSION = "py312"
     DEFAULT_NO_DJANGO = False
 
-    def __init__(self, target_dir, line_length=None, target_version=None, no_django=False):
+    def __init__(self, target_dir, line_length=None, target_version=None, no_django=False, toml_path=None):
         self.target_dir = self.get_and_check_path(target_dir)
         self.line_length = int(line_length) if line_length else None
         self.target_version = str(target_version) if target_version else None
         self.no_django = bool(no_django)
-        self.toml_file = Path(self.target_dir) / "pyproject.toml"
+        if toml_path:
+            # Absolute path overrides target_dir; relative path is resolved against it
+            toml_dir = (Path(self.target_dir) / toml_path).resolve()
+            if not toml_dir.is_dir():
+                raise AssertionError(f'Error: toml-path "{toml_dir}" is not a directory')
+            self.toml_file = toml_dir / "pyproject.toml"
+        else:
+            self.toml_file = Path(self.target_dir) / "pyproject.toml"
 
     def _strip_ruff_sections(self, toml_data: str) -> str:
         """Remove all existing [tool.ruff*] sections so they can be replaced cleanly."""
@@ -155,6 +162,29 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--toml-path",
+        required=False,
+        default=None,
+        type=str,
+        dest="toml_path",
+        metavar="/path/to/dir",
+        help=(
+            "Directory containing the pyproject.toml to write the ruff config into. "
+            "Accepts an absolute path or a path relative to the install directory. "
+            "Defaults to the install directory."
+        ),
+    )
+
+    parser.add_argument(
+        "--no-django",
+        required=False,
+        default=False,
+        action="store_true",
+        dest="no_django",
+        help="Exclude Django-specific lint rules (DJ) from the ruff config",
+    )
+
+    parser.add_argument(
         "--ruff-path",
         required=False,
         default="ruff",
@@ -172,15 +202,6 @@ if __name__ == "__main__":
         dest="venv_dir",
         metavar="/path/to/venv",
         help="Activate this virtual environment before running ruff in the hook",
-    )
-
-    parser.add_argument(
-        "--no-django",
-        required=False,
-        default=False,
-        action="store_true",
-        dest="no_django",
-        help="Exclude Django-specific lint rules (DJ) from the ruff config",
     )
 
     parser.add_argument(
@@ -207,7 +228,9 @@ if __name__ == "__main__":
     target_dir = argsd["install_directory"]
 
     if not argsd["githook_only"]:
-        ConfigInstaller(target_dir, argsd["line_length"], argsd["target_version"], argsd["no_django"]).install()
+        ConfigInstaller(
+            target_dir, argsd["line_length"], argsd["target_version"], argsd["no_django"], argsd["toml_path"]
+        ).install()
 
     if not argsd["config_only"]:
         HookInstaller(target_dir, argsd["venv_dir"], argsd["ruff_path"]).install()

@@ -45,6 +45,7 @@ If a virtual environment is active (`$VIRTUAL_ENV` is set), or if one is found i
 | `-l #` | Set ruff line length (default: 120) |
 | `-t v` | Set Python target version (default: py312) |
 | `-d` | Exclude Django lint rules (`DJ`) from the ruff config |
+| `-p path` | Directory containing the `pyproject.toml` to write the ruff config into. Accepts an absolute path or a path relative to the install directory. Defaults to the install directory. Ignored (with a warning) when used with `-w`. |
 
 If both `-w` and `-c` are passed, `-c` takes precedence — only the config is written and the hook is not installed.
 
@@ -65,6 +66,12 @@ bash install.sh -c ~/projects/myapp
 
 # Install hook only, no config changes
 bash install.sh -w ~/projects/myapp
+
+# Write ruff config into a subdirectory's pyproject.toml
+bash install.sh -p ./backend ~/projects/myapp
+
+# Write ruff config into a pyproject.toml at an absolute path
+bash install.sh -p /srv/configs ~/projects/myapp
 ```
 
 ## Configuration
@@ -86,8 +93,8 @@ Override at install time with `-l` (line length), `-t` (target version), and `-d
 To install without the shell script, run `install.py` directly:
 
 ```bash
-python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
-python3 install.py --config-only [--line-length 120] [--target-version py312] [--no-django] /path/to/project
+python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--toml-path /path/to/dir] [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
+python3 install.py --config-only [--line-length 120] [--target-version py312] [--no-django] [--toml-path /path/to/dir] /path/to/project
 python3 install.py --githook-only [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
 ```
 
