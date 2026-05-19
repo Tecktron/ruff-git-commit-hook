@@ -46,6 +46,7 @@ If a virtual environment is active (`$VIRTUAL_ENV` is set), or if one is found i
 | `-t v` | Set Python target version (default: py312) |
 | `-d` | Exclude Django lint rules (`DJ`) from the ruff config |
 | `-p path` | Directory containing the `pyproject.toml` to write the ruff config into. Accepts an absolute path or a path relative to the install directory. Defaults to the install directory. Ignored (with a warning) when used with `-w`. |
+| `-b path` | Restrict the hook to only lint staged files under this directory. Accepts an absolute path or a path relative to the install directory. Defaults to the project root. Ignored when used with `-c`. |
 
 If both `-w` and `-c` are passed, `-c` takes precedence — only the config is written and the hook is not installed.
 
@@ -72,6 +73,12 @@ bash install.sh -p ./backend ~/projects/myapp
 
 # Write ruff config into a pyproject.toml at an absolute path
 bash install.sh -p /srv/configs ~/projects/myapp
+
+# Only lint staged files under the backend/ subdirectory
+bash install.sh -b ./backend ~/projects/myapp
+
+# Combined: custom toml location and restricted lint directory
+bash install.sh -p ./backend -b ./backend ~/projects/myapp
 ```
 
 ## Configuration
@@ -93,11 +100,10 @@ Override at install time with `-l` (line length), `-t` (target version), and `-d
 To install without the shell script, run `install.py` directly:
 
 ```bash
-python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--toml-path /path/to/dir] [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
+python3 install.py [--line-length 120] [--target-version py312] [--no-django] [--toml-path /path/to/dir] [--ruff-path /path/to/ruff] [--venv /path/to/venv] [--lint-dir path/to/dir] /path/to/project
 python3 install.py --config-only [--line-length 120] [--target-version py312] [--no-django] [--toml-path /path/to/dir] /path/to/project
-python3 install.py --githook-only [--ruff-path /path/to/ruff] [--venv /path/to/venv] /path/to/project
+python3 install.py --githook-only [--ruff-path /path/to/ruff] [--venv /path/to/venv] [--lint-dir path/to/dir] /path/to/project
 ```
-
 ## Help and support
 
 If you find a bug or want to request a feature, please search the [GitHub issues](https://github.com/Tecktron/ruff-git-commit-hook/issues) first. If it doesn't exist, open a new ticket with as much detail as possible about how to reproduce the issue or what you'd like to see.

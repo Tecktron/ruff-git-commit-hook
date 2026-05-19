@@ -97,8 +97,9 @@ class ConfigInstaller(InstallerBase):
 class HookInstaller(InstallerBase):
     TEMPLATES = {"PRE_COMMIT": {"file": "pre-commit.sh"}}
 
-    def __init__(self, target_dir, venv_dir=None, ruff_path=None):
-        git_path = Path(target_dir) / ".git"
+    def __init__(self, target_dir, venv_dir=None, ruff_path=None, lint_dir=None):
+        resolved_target = Path(self.get_full_path(str(target_dir)))
+        git_path = resolved_target / ".git"
         if git_path.is_dir():
             hooks_path = str(git_path / "hooks")
         elif git_path.is_file():
@@ -107,20 +108,33 @@ class HookInstaller(InstallerBase):
                 raise AssertionError(f'Error: Cannot parse .git file at "{git_path}"')
             gitdir = Path(gitdir_text[8:])
             if not gitdir.is_absolute():
-                gitdir = Path(target_dir) / gitdir
+                gitdir = resolved_target / gitdir
             # worktree gitdir is <common>/.git/worktrees/<name>; hooks live two levels up
             hooks_path = str(gitdir.parent.parent / "hooks")
         else:
-            raise AssertionError(f'Error: No .git directory or file found at "{target_dir}"')
+            raise AssertionError(f'Error: No .git directory or file found at "{resolved_target}"')
         self.git_hook_dir = Path(self.get_and_check_path(hooks_path))
         self.venv_dir = self.get_full_path(venv_dir) if venv_dir else None
         self.ruff_path = ruff_path or "ruff"
+        if lint_dir:
+            lint_path = (resolved_target / lint_dir).resolve()
+            if not lint_path.is_dir():
+                raise AssertionError(f'Error: lint-dir "{lint_path}" is not a directory')
+            try:
+                self.lint_dir = str(lint_path.relative_to(resolved_target))
+            except ValueError as e:
+                raise AssertionError(
+                    f'Error: lint-dir "{lint_path}" is not inside the project directory "{resolved_target}"'
+                ) from e
+        else:
+            self.lint_dir = "."
 
     def generate_template(self):
         template = self.load_template_file("PRE_COMMIT")
         template = template.replace("{%%USEVENV%%}", "0" if self.venv_dir else "1")
         template = template.replace("{%%VENVDIR%%}", self.venv_dir if self.venv_dir else ".")
         template = template.replace("{%%RUFFBIN%%}", self.ruff_path)
+        template = template.replace("{%%LINTDIR%%}", self.lint_dir)
         return template
 
     def install(self):
@@ -205,6 +219,20 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--lint-dir",
+        required=False,
+        default=None,
+        type=str,
+        dest="lint_dir",
+        metavar="path/to/dir",
+        help=(
+            "Restrict the hook to only lint staged files under this directory. "
+            "Accepts an absolute path or a path relative to the install directory. "
+            "Defaults to the project root (all staged Python files are linted)."
+        ),
+    )
+
+    parser.add_argument(
         "--config-only",
         required=False,
         default=False,
@@ -233,4 +261,4 @@ if __name__ == "__main__":
         ).install()
 
     if not argsd["config_only"]:
-        HookInstaller(target_dir, argsd["venv_dir"], argsd["ruff_path"]).install()
+        HookInstaller(target_dir, argsd["venv_dir"], argsd["ruff_path"], argsd["lint_dir"]).install()

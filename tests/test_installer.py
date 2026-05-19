@@ -207,6 +207,63 @@ class TestConfigInstallerTomlPath:
 
 
 # ---------------------------------------------------------------------------
+# HookInstaller — lint_dir resolution
+# ---------------------------------------------------------------------------
+
+
+class TestHookInstallerLintDir:
+    def test_default_lint_dir_is_dot(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        installer = HookInstaller(str(target))
+        assert installer.lint_dir == "."
+
+    def test_relative_lint_dir_stored_as_relative(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        (tmp_path / "backend").mkdir()
+        installer = HookInstaller(str(target), lint_dir="backend")
+        assert installer.lint_dir == "backend"
+
+    def test_dotslash_relative_lint_dir_normalized(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        (tmp_path / "backend").mkdir()
+        installer = HookInstaller(str(target), lint_dir="./backend")
+        assert installer.lint_dir == "backend"
+
+    def test_absolute_lint_dir_derived_to_relative(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        (tmp_path / "backend").mkdir()
+        installer = HookInstaller(str(target), lint_dir=str(tmp_path / "backend"))
+        assert installer.lint_dir == "backend"
+
+    def test_lint_dir_outside_project_raises(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        outside = tmp_path.parent
+        with pytest.raises(AssertionError, match="not inside the project directory"):
+            HookInstaller(str(target), lint_dir=str(outside))
+
+    def test_nonexistent_lint_dir_raises(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        with pytest.raises(AssertionError, match="lint-dir"):
+            HookInstaller(str(target), lint_dir="nonexistent")
+
+    def test_default_lint_dir_in_template(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        result = HookInstaller(str(target)).generate_template()
+        assert 'LINT_DIR="."' in result
+
+    def test_lint_dir_substituted_in_template(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        (tmp_path / "backend").mkdir()
+        result = HookInstaller(str(target), lint_dir="backend").generate_template()
+        assert 'LINT_DIR="backend"' in result
+
+    def test_no_unresolved_placeholders(self, tmp_path):
+        target = make_hooks_dir(tmp_path)
+        result = HookInstaller(str(target)).generate_template()
+        assert "{%%" not in result
+
+
+# ---------------------------------------------------------------------------
 # HookInstaller.generate_template
 # ---------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@
 
 USE_VENV={%%USEVENV%%}
 RUFF="{%%RUFFBIN%%}"
+LINT_DIR="{%%LINTDIR%%}"
 
 if [ "${USE_VENV}" -eq 0 ]; then
   if [ -z "${VIRTUAL_ENV}" ]; then
@@ -14,6 +15,10 @@ if [ "${USE_VENV}" -eq 0 ]; then
 fi
 
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.pyi?$')
+
+if [ "${LINT_DIR}" != "." ]; then
+  STAGED_FILES=$(printf '%s\n' "${STAGED_FILES}" | grep "^${LINT_DIR}/")
+fi
 
 if [ -z "${STAGED_FILES}" ]; then
   printf "No Python files staged, nothing to check.\n"

@@ -18,6 +18,9 @@ function show_help {
   printf " -d   | Disable Django lint rules (DJ) in the ruff config\n"
   printf " -p p | Specify a custom directory for pyproject.toml (optional, default is install path)\n"
   printf "        Accepts an absolute path or a path relative to the install directory\n"
+  printf "\nOptional hook choices (skipped if -c is used)\n"
+  printf " -b p | Restrict linting to staged files under this directory (optional, default is project root)\n"
+  printf "        Accepts an absolute path or a path relative to the install directory\n"
   printf "\n"
 }
 
@@ -87,6 +90,7 @@ NO_DJANGO=0
 LL=""
 TV=""
 TOML_PATH=""
+LD=""
 
 while [ $# -gt 0 ]
 do
@@ -99,6 +103,7 @@ do
     "-l") LL=$2; shift ;;
     "-t") TV=$2; shift ;;
     "-p") TOML_PATH=$2; shift ;;
+    "-b") LD=$2; shift ;;
     *) DIR=$1 ;;
   esac
   shift
@@ -311,6 +316,7 @@ fi
 if [ "${GITHOOK_ONLY}" == 1 ]; then
   INSTALL_ARGS=("--githook-only" "--ruff-path=${RUFF_PATH}")
   [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
+  [ -n "${LD}" ] && INSTALL_ARGS+=("--lint-dir=${LD}")
   python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
   exit "$?"
 fi
@@ -322,4 +328,5 @@ INSTALL_ARGS=()
 [ -n "${TOML_PATH}" ] && INSTALL_ARGS+=("--toml-path=${TOML_PATH}")
 INSTALL_ARGS+=("--ruff-path=${RUFF_PATH}")
 [ "${IN_VENV}" == 0 ] && INSTALL_ARGS+=("--venv" "${VIRTUAL_ENV}")
+[ -n "${LD}" ] && INSTALL_ARGS+=("--lint-dir=${LD}")
 python3 ./install.py "${INSTALL_ARGS[@]}" "${DIR_PATH}"
